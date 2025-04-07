@@ -4,6 +4,8 @@ import { features } from "@/lib/features";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import SmsSendForm from "@/components/sms/SmsSendForm";
+import SmsBatchSendForm from "@/components/sms/SmsBatchSendForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export async function generateStaticParams() {
   return features.map((feature) => ({
@@ -56,10 +58,27 @@ export default async function FeatureDetailPage({ params }: PageProps) {
 
       <div className="bg-gray-50 p-6 rounded-lg mb-8">
         <h2 className="text-2xl font-semibold mb-4">機能検証</h2>
+
         {slug === 'batch-sms' ? (
           <div>
             <p className="mb-6">絶対リーチSMSのAPIを使って、実際にSMSを送信・確認することができます。</p>
-            <SmsSendForm />
+            
+            <Tabs defaultValue="single">
+              <TabsList className="mb-4">
+                <TabsTrigger value="single">個別送信</TabsTrigger>
+                <TabsTrigger value="batch">一斉送信</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="single">
+                <h3 className="text-xl font-medium mb-4">SMS個別送信</h3>
+                <SmsSendForm />
+              </TabsContent>
+              
+              <TabsContent value="batch">
+                <h3 className="text-xl font-medium mb-4">SMS一斉送信</h3>
+                <SmsBatchSendForm />
+              </TabsContent>
+            </Tabs>
           </div>
         ) : (
           <p className="text-gray-500 italic text-center py-12">
