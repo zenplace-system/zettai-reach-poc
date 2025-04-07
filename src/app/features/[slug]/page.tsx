@@ -11,12 +11,13 @@ export async function generateStaticParams() {
   }));
 }
 
-export default async function FeatureDetailPage({
-  params,
-}: {
+interface PageProps {
   params: { slug: string };
-}) {
-  const slug = (await params).slug;
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+export default async function FeatureDetailPage({ params }: PageProps) {
+  const { slug } = params;
   const feature = features.find((feature) => feature.id === slug);
 
   if (!feature) {
