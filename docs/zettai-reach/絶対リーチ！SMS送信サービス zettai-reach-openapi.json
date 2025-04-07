@@ -1,0 +1,1381 @@
+{
+  "openapi": "3.0.2",
+  "tags": [
+    {
+      "name": "API仕様",
+      "description": "　"
+    },
+    {
+      "name": "別記事項",
+      "description": "　"
+    }
+  ],
+  "info": {
+    "title": "絶対リーチ！® SMS Communication Platform",
+    "version": "1.4.7",
+    "x-logo": {
+      "href": "https://s3.ap-northeast-1.amazonaws.com/production.image.openpage.jp/company/logo/Y4PdaC6kmqb56zjf9FztuoNacc0eWq0tUzhWRWyo.png"
+    },
+    "description": "## 改版履歴\n|date|version|detail|\n|---|---|---|\n|2022/08/18|1.40|最新の API(P5)に統一<br>・全キャリア長文対応に合わせ、最新のAPIのみを記載しております。<br>・わかりづらい箇所等一部記述を見直しました。<br>・一部構成を変更しました。|\n|2022/08/25|1.41|2.4. ステータス取得（Common）で一部パラメータ名の表記を修正しました（先頭大文字→小文字）|\n|2022/10/28|1.42|パラメータ名の誤記を修正しました（先頭大文字→小文字）|\n|2022/12/06|1.43|1.3. TPS の表現を修正しました。<br>2.6.1 domain パラメータを追記しました。|\n|2023/06/12|1.44|2.9. 通数取得 API を新規追加しました。|\n|2023/11/21|1.45|2.4.2 ステータス取得(Common)のレスポンスに「separatedSuccessCount」項目を追加しました。|\n|2023/12/07|1.46|smsCodeの文字数を5桁または6桁に修正しました。|\n|2023/12/27|1.47|CommonMT送信、予約送信確認、予約送信一括キャンセルのパラメータに「groupTag」項目を追加しました。|\n\n## はじめに\n本書では「絶対リーチ！® SMS communicationPlatform」（以下、「本サービス」といいます）の外部API仕様を定義します。\n\n### 接続方式\nAPI 接続は、HTTPS の GET/POST メソッドを用いて接続します。<br>\n※SSL/TLS の方式は TLS1.2 に限定しております。TLS1.0、1.1 では接続できません。\n\n### 接続元 IP アドレスの制限\nセキュリティを強化するため API を使用するアクセス元 IP アドレスを制限することが可能です。<br>\n管理画面の API限定 IP 設定により設定できます。\n\n### TPS（Transactions Per Second）\nCommonMT 送信 API リクエストは全体で 600TPS（1 秒間あたりのリクエスト件数）での受け付けが可能です。<br>\n※上限を超過した場合は一時的に流量制限を実施する場合があります。\n\n### 推奨 API\n最新の「CommonMT 送信」をご利用下さい。<br>\n既に旧送信 API をご利用のお客様も「CommonMT 送信」に変更をお勧めいたします。\n\n### 配信プラットフォーム刷新にともなう API URL の変更\n2022 年 3 月に配信プラットフォームを刷新し、API URL も変更となりました。<br>\nこの仕様書では、各 API の新 URL を記載しております。\n"
+  },
+  "servers": [
+    {
+      "url": "https://sms-api.aossms.com",
+      "description": "本番環境"
+    }
+  ],
+  "paths": {
+    "/p5/api/mt.json": {
+      "post": {
+        "summary": "CommonMT 送信",
+        "description": "***※KDDI は送信失敗となった場合に KDDI からの失敗ステータスの通知に 20 分程度時間を要する場合があります。***\n",
+        "operationId": "P5Mt",
+        "tags": [
+          "API仕様"
+        ],
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/P5MtRequest"
+              },
+              "example": {
+                "token": "1234567890abcdefrghijklmnopqrstu",
+                "clientId": "12345",
+                "smsCode": "12345",
+                "message": "example message",
+                "phoneNumber": "+819012345678",
+                "scheduleTime": "2023-01-01 12:00",
+                "groupTag": "20230101_groupA"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success|リクエストの受付が成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目の内容が不正です。|\n|120|{項目名} too long.|{項目名}の長さが上限を超過しています。|\n|300|Exceed sending count.|契約プランで定められた送信可能な件数の上限を超過しています。|\n|400|Duplicate client tag.|クライアントタグが以前にリクエストした際のクライアントタグと重複しています。|\n|500|System error.|上記で定義外のエラーが発生しています。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5MtResponse"
+                }
+              }
+            }
+          }
+        },
+        "callbacks": {
+          "DLR 通知(Common)": {
+            "{$お客様サーバーのエンドポイント}": {
+              "post": {
+                "summary": "DLR 通知(Common)",
+                "description": "DLR のプッシュ型通知をお申込みいただいた場合、XML もしくは JSON 形式にて、弊社サーバより SMS 送信ステータスをお客様サーバに対する HTTPS コールを行って通知します（XML/JSON 形式のどちらで DLR 通知を行うかはお申し込み時にお選びいただく形となります）<br>\nDLR のプッシュ型通知は、MT 送信のリクエスト時に clientTag を指定することにより DLR 通知を受信できます。<br>\nclientTag を指定しなかった場合は DLR 通知を受信できません。\n",
+                "requestBody": {
+                  "description": "申し込み時に選択した形式に応じて以下のようにHTTPSリクエストします。<br>\n`xml=${URLエンコードされたXMLの内容}`<br>\n`json=${URLエンコードされたJSONの内容}`\n",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/DLRPushJSON"
+                      }
+                    }
+                  }
+                },
+                "responses": {
+                  "200": {
+                    "description": "※ API 呼び出し結果としてお客様サーバより HTTP ステータスコードを返却してください。<br>\nHTTP ステータスコード 2xx を 10 秒以内に返却した場合に成功とみなします。<br>\n200 以外のステータスコードを返却した場合、またはタイムアウト（10 秒）が発生した場合は受信に失敗したと判断され、3 回のリトライ処理が行われます。\n"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/checkreservation.json": {
+      "get": {
+        "summary": "CommonMT 予約送信確認",
+        "operationId": "P5CheckReservation",
+        "tags": [
+          "API仕様"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。<br>\n・半角英数字\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "smsCode",
+            "in": "query",
+            "description": "送信元 SMS コードを指定します。<br>\n割り当てられている SMS コードにつきましては、管理画面のクライアント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 6
+            }
+          },
+          {
+            "name": "clientTag",
+            "in": "query",
+            "description": "送信ステータス確認用の任意の識別文字列を指定します。<br>\n※本項目または scheduleTime, scheduleDate のいずれかが必須。<br>\n※優先度は clientTag > scheduleTime > scheduleDate になります。<br>\n※本項目を指定した場合、指定文字列を保持する SMS のステータスを返却します。<br>\n本項目を指定しない場合、SMS 送信日のデータを検索して返却します。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "scheduleTime",
+            "in": "query",
+            "description": "予約送信時間を文字列で指定します。<br>\nフォーマットは「YYYY-MM-dd HH:mm」となります。<br>\n※本項目または clientTag, scheduleDate のいずれかが必須。<br>\n※優先度は clientTag > scheduleTime > scheduleDate になります。<br>\ngroupTagも指定されている場合は組み合わせ条件になります。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyy-MM-dd HH:mm"
+            }
+          },
+          {
+            "name": "scheduleDate",
+            "in": "query",
+            "description": "予約送信日を半角数字で指定します。<br>\n※本項目または clientTag, scheduleTime のいずれかが必須。<br>\n※優先度は clientTag > scheduleTime > scheduleDate になります。<br>\ngroupTagも指定されている場合は組み合わせ条件になります。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyyMMdd"
+            }
+          },
+          {
+            "name": "groupTag",
+            "in": "query",
+            "description": "予約リクエスト時に指定した任意識別文字列を指定します。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|120|{項目名} too long.|{項目名}の長さが上限を超過しています。|\n|130|Already send.|確認対象のクライアントタグは既に送信されています。|\n|140|Past {項目名}.|{項目名}は過去日時です。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5MtReserveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/cancelreservation.json": {
+      "get": {
+        "summary": "CommonMT 予約送信キャンセル",
+        "operationId": "P5CancelReservation",
+        "tags": [
+          "API仕様"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]+"
+            }
+          },
+          {
+            "name": "clientTag",
+            "in": "query",
+            "description": "送信ステータス確認用の任意の識別文字列を指定します。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|120|{項目名} too long.|{項目名}の長さが上限を超過しています。|\n|130|Already send.|キャンセル対象は既に送信されています。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5MtReserveCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/cancelreservationall.json": {
+      "get": {
+        "summary": "CommonMT 予約送信一括キャンセル",
+        "description": "（※1）startDate を指定し endDate を指定しない場合、startDate 以降の予約がキャンセルされます。<br>\nendDate を指定し startDate を指定しない場合、endDate 以前の予約がキャンセルされます。<br>\ngroupTag を指定し、startDate、endDate を指定しない場合、groupTag が一致する予約がキャンセルされます。<br>\ngroupTag を指定し、かつ startDate、endDate のいずれかまたは両方が指定されている場合、groupTag と日付範囲が一致する予約がキャンセルされます。<br>\nstartDate、endDate、groupTag をすべて指定しない場合はすべての予約がキャンセルされます。\n",
+        "operationId": "P5CancelReservationAll",
+        "tags": [
+          "API仕様"
+        ],
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "キャンセルする日付範囲の開始日付を指定します。（※1）\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyyMMdd",
+              "minLength": 8,
+              "maxLength": 8
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "キャンセルする日付範囲の終了日付を指定します。（※1）\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "yyyyMMdd",
+              "minLength": 8,
+              "maxLength": 8
+            }
+          },
+          {
+            "name": "groupTag",
+            "in": "query",
+            "description": "キャンセルするグループタグを指定します。（※1）\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5MtReserveCancelAllResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/status.json": {
+      "get": {
+        "summary": "CommonMT ステータス取得",
+        "tags": [
+          "API仕様"
+        ],
+        "operationId": "P5Status",
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 12345
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "SMS 送信日を指定します。<br>\n・半角数字<br>\n※本項目または clientTag のいずれかが必須。<br>\n※優先度は clientTag > date になります。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 8,
+              "format": "yyyyMMdd",
+              "example": 20230401
+            }
+          },
+          {
+            "name": "clientTag",
+            "in": "query",
+            "description": "送信ステータス確認用の任意の識別文字列を指定します。<br>\n※本項目または date のいずれかが必須。<br>\n※優先度は clientTag > date になります。<br>\n※本項目を指定した場合、指定文字列を保持する SMS のステータスを返却します。<br>\n本項目を指定しない場合、SMS 送信日のデータを検索して返却します。\n",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 203,
+              "example": "example tag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|120|{項目名} too long.|{項目名}の長さが上限を超過しています。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p1/api/shortenurl.json": {
+      "post": {
+        "summary": "ショート URL 登録",
+        "description": "API によりショート URL を登録することが可能です。\n",
+        "operationId": "P1ShortenUrl",
+        "tags": [
+          "API仕様"
+        ],
+        "deprecated": false,
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/P1ShortenUrlRequest"
+              },
+              "example": {
+                "token": "1234567890abcdefrghijklmnopqrstu",
+                "clientId": "12345",
+                "name": "example",
+                "longUrl": "https://example.com",
+                "domain": "example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success|リクエストの受付が成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目の内容が不正です。|\n|120|{項目名} too long.|{項目名}の長さが上限を超過しています。|\n|500|System error.|上記で定義外のエラーが発生しています。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P1ShortenUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/template.json": {
+      "get": {
+        "summary": "登録済み定型文取得",
+        "tags": [
+          "API仕様"
+        ],
+        "operationId": "P5template",
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 12345
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/p5TemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/numbercleaning.json": {
+      "get": {
+        "summary": "電話番号クリーニング",
+        "tags": [
+          "API仕様"
+        ],
+        "operationId": "P5NumberCleaning",
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 12345
+            }
+          },
+          {
+            "name": "phoneNumber",
+            "in": "query",
+            "description": "判定対象電話番号を指定します。<br>\n日本国内形式(070xxxxxxxx/080xxxxxxxx/090xxxxxxxx)、国際電話番号形式のどちらも指定することが可能です。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\+81|0)(([26789]0[1-9][0-9]{7}$)|(20[1-9][0-9]{10}$))",
+              "example": "+819012345678"
+            }
+          },
+          {
+            "name": "referenceDate",
+            "in": "query",
+            "description": "判定を行う基準となる日を指定します。<br>\n・2 年前～当日まで有効\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyyMMdd",
+              "example": 20230101
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P5NumberCleaningResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/p5/api/separatedsuccesscount.json": {
+      "get": {
+        "summary": "通数集計",
+        "tags": [
+          "API仕様"
+        ],
+        "operationId": "P5SeparatedSuccessCount",
+        "deprecated": false,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 32,
+              "example": "1234567890abcdefrghijklmnopqrstu"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "契約クライアント ID または all を指定します。<br>\n※all は代理店参照者のみ使用可能です。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字<br>\n・all（代理店参照者のみ）\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": 12345
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "description": "取得する年月を指定します。取得できる期間はデータ保持期間の間のみです。<br>\n・半角数字<br>\n・YYYYMM 形式<br>\n※当月を指定する場合、取得できる件数は前日までのものとなります。\n",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "yyyyMM",
+              "example": 202301
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "※responseCode:0 が返却されていない場合、リクエストの受付には失敗しています。\n|responseCode|responseMessage|説明|\n|---|---|---|\n|0|Success.|リクエストが成功しました。|\n|100|Required {項目名}.|{項目名}の項目が不足しています。|\n|110|Invalid {項目名}.|{項目名}の項目が不正です。|\n|500|System error.|上記で定義外のエラーが発生しました。|\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P5SeparatedSuccessCountResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "国際電話番号形式について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "国際電話番号形式について",
+        "description": "本資料上のリクエストパラメータで『国際電話番号』形式としてある場合、以下に記載する国際電話番号形式に則った電話番号の指定が必要になります。<br>\n- 先頭が半角記号＋より始まる (注意:GET/POST 送信時は URL エンコードが必要)\n- 国番号 81\n- 国番号の次の 1 文字は 7,8,9 のいずれか\n- 以降、任意の半角数字 8 桁\n  - xml タグ指定例）`+818010007765`\n  - URL エンコード指定例）`%2b818010007765`<br>(**%2b** が半角プラス+を URL エンコードした文字列です)\n"
+      }
+    },
+    "ステータス ID について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "ステータス ID について",
+        "description": "本サービスのステータス ID 設定値とメッセージは以下の通りです。\n\n|設定値|メッセージ|備考|\n|---|---|---|\n|0|Unknown|状態不明|\n|1|Message is Sending|配信中|\n|2|Message delivered|送達|\n|3|Message delivery failed|配信失敗|\n"
+      }
+    },
+    "レスポンスの rawdata について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "レスポンスの rawdata について",
+        "description": "各レスポンスの rawdata は廃止予定のため参照は推奨いたしません\n"
+      }
+    },
+    "詳細内部コード（detailedStatusId）について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "詳細内部コード（detailedStatusId）について",
+        "description": "本サービスの詳細内部コードは配信失敗の場合、モジュールコード(先頭 2 桁) + 分類コード(末尾 3 桁)」の 5桁で構成されます。<br>\n詳細内部コード設定値の主要な値は以下の通りです。<br>\n***※ 詳細内部コードは将来予告なく追加・変更される可能性があります。<br>\nそのためプログラム実装では厳密に参照することは避け例外を許容することをお勧めいたします。***<br>\n\n|モジュールコード<br>（先頭 2 桁）|該当キャリア|\n|---|---|\n|11～14|AU|\n|31,32|Docomo|\n|51,52|Softbank|\n|61,62|楽天モバイル|\n\n|分類コード<br>（末尾 3 桁）|内容|起因箇所|\n|---|---|---|\n|721|輻輳|キャリア、送信先端末|\n|732|欠番、顧客都合|送信先端末|\n|821|輻輳|送信先端末|\n|823|ネットワーク起因（圏外、電源 OFF 含む）|キャリア、送信先端末|\n|824|圏外、電源 OFF 等|送信先端末|\n|833|圏外、話中、電源 OFF 等|送信先端末|\n|834|移動機側エラー（SMS 拒否設定等 ）|送信先端末|\n"
+      }
+    },
+    "Y!Mobile （旧 Willcom、PHS 回線）について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "Y!Mobile （旧 Willcom、PHS 回線）について",
+        "description": "Y!Mobile （旧 Willcom、PHS 回線）は 2021 年 1 月 31 日（日）にサービス終了しました。\n"
+      }
+    },
+    "キャリア ID について": {
+      "options": {
+        "tags": [
+          "別記事項"
+        ],
+        "summary": "キャリア ID について",
+        "description": "本サービスのキャリア ID 設定値とキャリアは以下の通りです。\n|キャリア ID|キャリア|\n|---|---|\n|101|AU|\n|103|Docomo|\n|105|Softbank|\n|106|楽天モバイル|\n"
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "NotFound": {
+        "description": "The specified resource was not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "InternalServerError",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      },
+      "P5MtRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "clientId",
+          "smsCode",
+          "message",
+          "phoneNumber"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n"
+          },
+          "clientId": {
+            "type": "string",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n"
+          },
+          "smsCode": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 6,
+            "description": "送信元 SMS コードを指定します。<br>\n割り当てられている SMS コードにつきましては、管理画面のクライアント情報をご確認ください。<br>\n"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 660,
+            "description": "送信メッセージを指定します。<br>\n(全角/半角問わず文字数でカウントされます)\n"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^(\\+81|0)(([26789]0[1-9][0-9]{7}$)|(20[1-9][0-9]{10}$))",
+            "description": "送信先電話番号を指定します。<br>\n日本国内形式(070xxxxxxxx/080xxxxxxxx/090xxxxxxxx)、国際電話番号形式のどちらも指定することが可能です。<br>\n※国際電話番号形式については『別記事項・国際電話番号形式について』をご参照ください。\n"
+          },
+          "carrierId": {
+            "type": "string",
+            "enum": [
+              "101",
+              "103",
+              "105",
+              "106"
+            ],
+            "description": "キャリア ID を指定します。<br>\n指定しない場合は本サービスにて電話番号より送信先キャリアを自動判定します。\n"
+          },
+          "clientTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "送信ステータス確認用の任意の識別文字列を指定します。<br>\n必ずユニークな値を指定してください。<br>\n値の重複があるとエラーになります。\n"
+          },
+          "scheduleTime": {
+            "type": "string",
+            "format": "yyyy-MM-dd HH:mm",
+            "description": "予約送信時間を指定します。\n"
+          },
+          "groupTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "予約確認・一括キャンセル用の任意識別文字列を指定します。\n"
+          }
+        }
+      },
+      "p5MtResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "phoneNumber",
+          "smsMessage"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+81(([26789]0[0-9]{8}$)|(20[0-9]{11}$))",
+            "example": "+819012345678",
+            "description": "リクエスト時に指定した送信先電話番号です。<br>\n国際電話番号形式で返却されます。<br>\n※国際電話番号形式については『別記事項・国際電話番号形式について』をご参照ください。\n"
+          },
+          "smsMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 660,
+            "example": "example message",
+            "description": "送信時に指定した message 項目の内容です。\n"
+          }
+        }
+      },
+      "p5MtReserveResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "count",
+          "status"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "description": "応答結果を示すメッセージです。\n",
+            "example": "Success."
+          },
+          "count": {
+            "type": "integer",
+            "example": 1,
+            "description": "予約中のジョブの件数です。\n"
+          },
+          "status": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scheduleTime": {
+                  "type": "string",
+                  "format": "yyyy-MM-dd HH:mm",
+                  "example": "2023-01-01 12:00",
+                  "description": "予約送信時間です。\n"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "pattern": "^\\+81(([26789]0[0-9]{8}$)|(20[0-9]{11}$))",
+                  "example": "+818012345678",
+                  "description": "送信先の電話番号です。<br>\n国際電話番号形式で返却されます。\n"
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 660,
+                  "example": "example message",
+                  "description": "送信時に指定した message 項目の内容です。\n"
+                },
+                "smsCode": {
+                  "type": "integer",
+                  "minLength": 5,
+                  "maxLength": 6,
+                  "example": 12345,
+                  "description": "送信元 SMS コードです。\n"
+                },
+                "clientTag": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "example": "example tag",
+                  "description": "SMS 送信のリクエスト時にパラメータとして指定した clientTag です。\n"
+                }
+              }
+            }
+          }
+        }
+      },
+      "p5MtReserveCancelResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "clientTag"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "clientTag": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 203,
+            "example": "abcdefg",
+            "description": "SMS 送信のリクエスト時にパラメータとして指定した clientTag です。\n"
+          }
+        }
+      },
+      "p5MtReserveCancelAllResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          }
+        }
+      },
+      "p5StatusResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "status"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "status": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dateTime": {
+                  "type": "string",
+                  "format": "yyyyMMdd HHmmSSsss",
+                  "example": "20230101 123030123",
+                  "description": "本サービスがキャリアよりステータスを取得した時間です。\n"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "pattern": "^\\+81(([26789]0[0-9]{8}$)|(20[0-9]{11}$))",
+                  "example": "+818012345678",
+                  "description": "送信先の電話番号です。<br>\n国際電話番号形式で返却されます。<br>\n※国際電話番号形式については『別記事項・国際電話番号形式について』をご参照ください。\n"
+                },
+                "message": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 660,
+                  "example": "example message",
+                  "description": "送信先に送信された SMS 本文です。\n"
+                },
+                "smsCode": {
+                  "type": "integer",
+                  "minLength": 5,
+                  "maxLength": 6,
+                  "example": 12345,
+                  "description": "送信元 SMS コードです。\n"
+                },
+                "carrierId": {
+                  "type": "string",
+                  "enum": [
+                    null,
+                    "101",
+                    "103",
+                    "105",
+                    "106",
+                    "999"
+                  ],
+                  "nullable": true,
+                  "example": 101,
+                  "description": "キャリア ID です。以下のいずれかの ID になります。<br>\n※statusId が 0,1 の場合本項目の値は不定です。<br>\n※該当キャリアが判別できない場合、null または 999 となります。\n"
+                },
+                "carrierName": {
+                  "type": "string",
+                  "example": "AU",
+                  "description": "キャリア名です。<br>\n上記のキャリア ID に応じたキャリア名が出力されます。<br>\n※statusId が 0,1 の場合本項目の値は不定です。\n"
+                },
+                "statusId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1,
+                  "example": 2,
+                  "description": "ステータス ID です。\n"
+                },
+                "clientTag": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 203,
+                  "example": "abcdefg",
+                  "description": "SMS 送信のリクエスト時にパラメータとして指定した clientTag です。<br>\nSMS 送信のリクエスト時に指定しなかった場合は空となります。\n"
+                },
+                "detailedStatusId": {
+                  "type": "string",
+                  "example": 2,
+                  "description": "ステータスに関する詳細内部コードです。<br>\n※statusId が 0,1 の場合本項目の値は不定です。\n"
+                },
+                "separatedSuccessCount": {
+                  "type": "integer",
+                  "example": 10,
+                  "description": "課金通数です。<br>\n※statusId が2,3の場合のみ有効値が出力されます<br>\n※statusIdが0,1の場合本項目の値は不定です\n"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DLRPushJSON": {
+        "required": [
+          "eventNotifications"
+        ],
+        "properties": {
+          "eventNotifications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "type",
+                "dateTime",
+                "messageId",
+                "phoneNumber",
+                "smsCode",
+                "messageText",
+                "clientId",
+                "clientTag",
+                "statusId",
+                "statusDescription"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "DLR"
+                  ],
+                  "example": "DLR",
+                  "description": "固定値「DLR」となります。"
+                },
+                "dateTime": {
+                  "type": "string",
+                  "format": "yyyy/MM/dd HH:mm:SS",
+                  "example": "2023/01/01 12:30:00",
+                  "description": "本サービスがキャリアより DLR を取得した時間です。\n"
+                },
+                "messageId": {
+                  "type": "string",
+                  "minLength": 32,
+                  "maxLength": 32,
+                  "example": "abcdefghijklmnopqrstuv0123456789",
+                  "description": "本サービス内部で生成/使用されるメッセージ ID です。\n"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "pattern": "^\\+81(([26789]0[0-9]{8}$)|(20[0-9]{11}$))",
+                  "example": "+819012345678",
+                  "description": "送信先電話番号です。<br>\n国際電話番号形式で通知されます。<br>\n※詳細は『別記事項・国際電話番号形式について』をご参照ください。\n"
+                },
+                "smsCode": {
+                  "type": "string",
+                  "minLength": 5,
+                  "maxLength": 6,
+                  "example": 12345,
+                  "description": "送信元 SMS 用コードです。\n"
+                },
+                "carrierId": {
+                  "nullable": true,
+                  "type": "string",
+                  "enum": [
+                    null,
+                    "101",
+                    "103",
+                    "105",
+                    "106",
+                    "999"
+                  ],
+                  "example": 101,
+                  "description": "キャリア ID です。<br>\n※statusId が 0,1 の場合本項目の値は不定です。<br>\n※該当キャリアが判別できない場合、null または 999 となります。\n"
+                },
+                "carrierName": {
+                  "type": "string",
+                  "example": "AU",
+                  "description": "キャリア名です。<br>\n上記のキャリア ID に応じたキャリア名が出力されます。<br>\n※statusId が 0,1 の場合本項目の値は不定です\n"
+                },
+                "messageText": {
+                  "type": "string",
+                  "example": "example message",
+                  "description": "送信先に送信された SMS 本文です。\n"
+                },
+                "clientId": {
+                  "type": "string",
+                  "example": 12345,
+                  "description": "お客様毎に割り当てられた本サービスのクライアント ID です。\n"
+                },
+                "clientTag": {
+                  "type": "string",
+                  "example": "example tag",
+                  "description": "SMS 送信時に指定したクライアントタグです。\n"
+                },
+                "statusId": {
+                  "type": "string",
+                  "example": 2,
+                  "description": "ステータス ID です。\n"
+                },
+                "statusDescription": {
+                  "type": "string",
+                  "example": "Message delivered",
+                  "description": "ステータス概要です。<br>\nステータス ID に応じて下記のステータス概要が出力されます。\n|ステータスID|ステータス概要|\n|---|---|\n|0|Unknown|\n|1|Message is Sending|\n|2|Message delivered|\n|3|Message delivery failed|\n"
+                },
+                "detailedStatusId": {
+                  "type": "integer",
+                  "example": 2,
+                  "description": "ステータスに関する詳細内部コードです。<br>\n※statusId が 0,1 の場合本項目の値は不定です\n"
+                },
+                "separatedSuccessCount": {
+                  "type": "integer",
+                  "example": 1,
+                  "description": "課金通数です。<br>\n※statusId が 2 の場合のみ有効値が出力されます。\n"
+                }
+              }
+            }
+          }
+        }
+      },
+      "P1ShortenUrlRequest": {
+        "type": "object",
+        "required": [
+          "token",
+          "clientId",
+          "longUrl"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 32,
+            "description": "アカウント登録時に発行されるアクセスキーを指定します。<br>\nトークンの値につきましては、管理画面のアカウント情報をご確認ください。\n"
+          },
+          "clientId": {
+            "type": "string",
+            "description": "契約クライアント ID を指定します。<br>\n割り当てられている契約クライアント ID につきましては、管理画面のクライアント情報をご確認ください。<br>\n・半角数字\n"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 256,
+            "description": "生成されるショート URL の識別名を指定します。<br>\n指定しない場合、自動的に下記が name として登録されます。<br>\nShorturl-YYYYMMDDHHMMSSsss(sss はミリ秒)\n"
+          },
+          "longUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "ショート URL に変換するオリジナル URL を指定します。\n"
+          },
+          "domain": {
+            "type": "string",
+            "description": "ショート URL に変換する際のドメインを指定します。<br>\n※独自ドメインオプションをお申し込みいただいているお客様のみご指定可能です\n"
+          }
+        }
+      },
+      "P1ShortenUrlResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "shortUrl": {
+            "type": "string",
+            "example": "https://ai9.jp/xxxxxx",
+            "description": "生成されたショート URL です。\n"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "example": "example short url",
+            "description": "リクエスト時に指定した生成されたショート URL の識別名です。\n"
+          }
+        }
+      },
+      "p5TemplateResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "count",
+          "templates"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "count": {
+            "type": "integer",
+            "example": 1,
+            "description": "登録済の定型文の件数です。\n"
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "example": "example template",
+                  "description": "定型文のタイトルです。\n"
+                },
+                "default_content": {
+                  "type": "string",
+                  "example": "example message",
+                  "description": "全キャリア共通の定型文メッセージです。\n"
+                },
+                "parameters": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "parameter_name": {
+                        "type": "string",
+                        "example": "example parameter",
+                        "description": "定型文に埋め込まれているパラメータです。<br>\n本項目は定型文に埋め込まれたパラメータの件数分だけ繰り返されます。\n"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "P5NumberCleaningResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "phoneNumber",
+          "referenceDate",
+          "status"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^\\+81(([26789]0[0-9]{8}$)|(20[0-9]{11}$))",
+            "example": "+819012345678",
+            "description": "リクエスト時に指定した送信先電話番号です。<br>\n国際電話番号形式で返却されます。<br>\n※国際電話番号形式については『別記事項・国際電話番号形式について』をご参照ください。\n"
+          },
+          "referenceDate": {
+            "type": "string",
+            "format": "yyyyMMdd",
+            "example": "20230101",
+            "description": "リクエスト時に指定した判定を行う基準日です。\n"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "T",
+              "N",
+              "ERROR"
+            ],
+            "example": "T",
+            "description": "名義人変更判定結果の状態です。<br>\n|status|説明|\n|---|---|\n|T|他人名義と判定された|\n|N|本人|\n|ERROR|判定 DB になく判定不可|\n"
+          }
+        }
+      },
+      "P5SeparatedSuccessCountResponse": {
+        "type": "object",
+        "required": [
+          "responseCode",
+          "responseMessage",
+          "separatedSuccessCount"
+        ],
+        "properties": {
+          "responseCode": {
+            "type": "integer",
+            "minLength": 1,
+            "maxLength": 3,
+            "example": 0,
+            "description": "応答コードです。<br>\n正常時は 0 を返します。<br>\n1 以上の場合はエラーになります。\n"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "Success.",
+            "description": "応答結果を示すメッセージです。\n"
+          },
+          "separatedSuccessCount": {
+            "type": "array",
+            "description": "※取得した日時によっては請求書と差異が発生する可能性があります。<br>\n差異が発生した場合は請求書を正とさせて頂きます。\n",
+            "items": {
+              "type": "object",
+              "properties": {
+                "101": {
+                  "type": "integer",
+                  "example": 12345,
+                  "description": "指定年月の au 通数です。<br>\n※0 通の場合は表示されません。\n"
+                },
+                "103": {
+                  "type": "integer",
+                  "example": 12345,
+                  "description": "指定年月のドコモ通数です。<br>\n※0 通の場合は表示されません。\n"
+                },
+                "105": {
+                  "type": "integer",
+                  "example": 12345,
+                  "description": "指定年月のソフトバンク通数です。<br>\n※0 通の場合は表示されません。\n"
+                },
+                "106": {
+                  "type": "integer",
+                  "example": 12345,
+                  "description": "指定年月の楽天モバイル通数です。<br>\n※0 通の場合は表示されません。\n"
+                },
+                "clientId": {
+                  "type": "integer",
+                  "example": 12345,
+                  "description": "お客様毎に割り当てられた本サービスのクライアント ID です。<br>\n※0 通の場合は表示されません。\n"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
