@@ -8,8 +8,6 @@ on:
 
 jobs:
   deploy:
-    # プルリクエストがマージされた時または手動実行時に実行
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
