@@ -19,7 +19,9 @@ interface PageProps {
 }
 
 export default async function FeatureDetailPage({ params }: PageProps) {
-  const { slug } = params;
+  const awaitedParams = await params;
+  const { slug } = awaitedParams;
+  
   const feature = features.find((feature) => feature.id === slug);
 
   if (!feature) {

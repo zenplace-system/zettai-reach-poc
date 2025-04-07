@@ -4,9 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle2 } from "lucide-react";
 
 export default function Page() {
-  // 実装済み機能のID
-  const implementedFeatures = ['batch-sms'];
-
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="text-center mb-12">
@@ -19,18 +16,16 @@ export default function Page() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feature) => {
-          const isImplemented = implementedFeatures.includes(feature.id);
-          
           return (
             <Link href={`/features/${feature.id}`} key={feature.id} className="block transition-transform hover:scale-105">
-              <Card className={`h-full hover:shadow-lg ${isImplemented ? 'border-green-500 border-2' : ''}`}>
+              <Card className={`h-full hover:shadow-lg ${feature.implemented ? 'border-green-500 border-2' : ''}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <feature.icon className="h-6 w-6 text-primary" />
                       <CardTitle className="text-xl">{feature.title}</CardTitle>
                     </div>
-                    {isImplemented && (
+                    {feature.implemented && (
                       <div className="flex items-center text-green-600">
                         <CheckCircle2 className="h-5 w-5 mr-1" />
                         <span className="text-xs font-medium">実装済み</span>
