@@ -1,0 +1,64 @@
+name: Deploy to Vercel Production
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch: # 手動実行を可能にする
+
+jobs:
+  deploy:
+    # プルリクエストがマージされた時または手動実行時に実行
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel Production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+        run: |
+          DEPLOY_OUTPUT=$(npx vercel deploy --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID --yes)
+          echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_ENV
+          echo "$DEPLOY_OUTPUT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Comment on PR Success
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { issue: { number: pull_number }, repo: { owner, repo } } = context;
+            const deployOutput = process.env.DEPLOY_OUTPUT || 'デプロイ出力が空です';
+            
+            github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull_number,
+              body: `✅ Vercelへのデプロイが成功しました！\n\n**デプロイ情報**: \n${deployOutput}`
+            });
+
+      - name: Comment on PR Failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { issue: { number: pull_number }, repo: { owner, repo } } = context;
+            
+            github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull_number,
+              body: `❌ Vercelへのデプロイが失敗しました。\n\nGitHub Actionsのログを確認してください。`
+            });
