@@ -72,7 +72,9 @@ export default function SmsBatchSendForm() {
   });
 
   // 送信結果
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [batchResult, setBatchResult] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [statusResult, setStatusResult] = useState<any>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
 
@@ -426,6 +428,7 @@ export default function SmsBatchSendForm() {
                           </tr>
                         </thead>
                         <tbody>
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                           {batchResult.results.map((result: any, index: number) => (
                             <tr key={index} className="border-t">
                               <td className="p-1">{index + 1}</td>
@@ -447,6 +450,7 @@ export default function SmsBatchSendForm() {
                     <summary className="font-medium text-red-500">エラー詳細 ({batchResult.errors.length}件)</summary>
                     <div className="mt-2 border border-red-200 rounded-md p-2 max-h-40 overflow-y-auto bg-red-50">
                       <ul className="list-disc pl-5">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {batchResult.errors.map((error: any, index: number) => (
                           <li key={index} className="text-red-600">
                             {error.phoneNumber}: {error.error}
@@ -501,6 +505,7 @@ export default function SmsBatchSendForm() {
                           </tr>
                         </thead>
                         <tbody>
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                           {statusResult.deliveryStatus.status.map((status: any, index: number) => (
                             <tr key={index} className="border-t">
                               <td className="p-1">{status.phoneNumber}</td>
